@@ -1,5 +1,5 @@
 {
-    "name": "kpirnie/kpt-logger",
+    "name": "kevinpirnie/kpt-logger",
     "description": "Simple Universal Application Logger for PHP with configurable output destinations and four standard log levels",
     "type": "library",
     "keywords": [
