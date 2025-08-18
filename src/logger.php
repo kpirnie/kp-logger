@@ -1,261 +1,319 @@
 <?php
+
 /**
  * KPT Logger - Simple Universal Application Logger
- * 
+ *
  * Provides basic logging capabilities for any application with support for
  * four log levels and configurable output destinations (system log or file).
- * 
+ *
  * @since 8.4
  * @author Kevin Pirnie <me@kpirnie.com>
  * @package KP Library
  */
 
-// throw it under my namespace
+declare(strict_types=1);
+
 namespace KPT;
 
-// make sure the class doesn't exist
-if ( ! class_exists( 'Logger' ) ) {
+use JsonException;
+
+/**
+ * KPT Logger
+ *
+ * Simple, focused logging system for applications with configurable
+ * output destinations and four standard log levels.
+ *
+ * @since 8.4
+ * @author Kevin Pirnie <me@kpirnie.com>
+ * @package KP Library
+ */
+class Logger
+{
+    /** @var int Error: error conditions */
+    public const LEVEL_ERROR = 1;
+
+    /** @var int Warning: warning conditions */
+    public const LEVEL_WARNING = 2;
+
+    /** @var int Info: informational messages */
+    public const LEVEL_INFO = 3;
+
+    /** @var int Debug: debug-level messages */
+    public const LEVEL_DEBUG = 4;
+
+    /** @var bool Whether logging is enabled (errors always log) */
+    private static bool $enabled = false;
+
+    /** @var string|null Log file path */
+    private static string|null $logFile = null;
+
+    /** @var bool Whether to include stack trace */
+    private static bool $includeStackTrace = true;
 
     /**
-     * KPT Logger
-     * 
-     * Simple, focused logging system for applications with configurable
-     * output destinations and four standard log levels.
-     * 
-     * @since 8.4
-     * @author Kevin Pirnie <me@kpirnie.com>
-     * @package KP Library
+     * Initialize the logger class
+     *
+     * Sets whether or not debug logs are enabled, and if a stack trace should be logged
      */
-    class Logger {
+    public function __construct(
+        private readonly bool $instanceEnabled,
+        private readonly bool $instanceShowStack = true
+    ) {
+        self::$enabled = $this->instanceEnabled;
+        self::$includeStackTrace = $this->instanceShowStack;
+    }
 
-        /** @var int Error: error conditions */
-        const LEVEL_ERROR = 1;
-        
-        /** @var int Warning: warning conditions */
-        const LEVEL_WARNING = 2;
-        
-        /** @var int Info: informational messages */
-        const LEVEL_INFO = 3;
-        
-        /** @var int Debug: debug-level messages */
-        const LEVEL_DEBUG = 4;
-
-        /** @var array Log level names mapping */
-        private static array $_level_names = [
+    /**
+     * Get level name from level constant
+     */
+    private static function getLevelName(int $level): string
+    {
+        return match ($level) {
             self::LEVEL_ERROR => 'ERROR',
             self::LEVEL_WARNING => 'WARNING',
             self::LEVEL_INFO => 'INFO',
-            self::LEVEL_DEBUG => 'DEBUG'
-        ];
+            self::LEVEL_DEBUG => 'DEBUG',
+            default => 'UNKNOWN'
+        };
+    }
 
-        /** @var bool Whether logging is enabled (errors always log) */
-        private static bool $_enabled = false;
-        private static ?string $_log_file = null;
-        private static bool $_include_stack_trace = true;
+    /**
+     * Log an error message
+     *
+     * Errors always log, even when logging is disabled
+     *
+     * @param string $message Error message
+     * @param array<string, mixed> $context Additional context data
+     * @param bool|null $includeStack Whether to include stack trace (null = use global setting)
+     */
+    public static function error(
+        string $message,
+        array $context = [],
+        bool|null $includeStack = null
+    ): void {
+        self::writeLog(
+            message: $message,
+            level: self::LEVEL_ERROR,
+            context: $context,
+            includeStack: $includeStack
+        );
+    }
 
-        // fire up the logger class... this sets whether or not debug logs are enabled, and if a stack trace should be logged
-        public function __construct( bool $enabled, bool $show_stack = true ) {
-            self::$_enabled = $enabled;
-            self::$_include_stack_trace = $show_stack;
+    /**
+     * Log a warning message
+     *
+     * Only logs when logging is enabled
+     *
+     * @param string $message Warning message
+     * @param array<string, mixed> $context Additional context data
+     * @param bool|null $includeStack Whether to include stack trace (null = use global setting)
+     */
+    public static function warning(
+        string $message,
+        array $context = [],
+        bool|null $includeStack = null
+    ): void {
+        if (!self::$enabled) {
+            return;
         }
 
-        /**
-         * Log an error message
-         * 
-         * @since 8.4
-         * @author Kevin Pirnie <me@kpirnie.com>
-         * 
-         * @param string $message Error message
-         * @param array $context Additional context data
-         * @param bool|null $include_stack Whether to include stack trace (null = use global setting)
-         * @return void
-         */
-        public static function error( string $message, array $context = [], ?bool $include_stack = null ): void {
+        self::writeLog(
+            message: $message,
+            level: self::LEVEL_WARNING,
+            context: $context,
+            includeStack: $includeStack
+        );
+    }
 
-            // errors always log, even when disabled
-            self::writeLog( $message, self::LEVEL_ERROR, $context, $include_stack );
+    /**
+     * Log an info message
+     *
+     * Only logs when logging is enabled
+     *
+     * @param string $message Info message
+     * @param array<string, mixed> $context Additional context data
+     * @param bool|null $includeStack Whether to include stack trace (null = use global setting)
+     */
+    public static function info(
+        string $message,
+        array $context = [],
+        bool|null $includeStack = null
+    ): void {
+        if (!self::$enabled) {
+            return;
         }
 
-        /**
-         * Log a warning message
-         * 
-         * @since 8.4
-         * @author Kevin Pirnie <me@kpirnie.com>
-         * 
-         * @param string $message Warning message
-         * @param array $context Additional context data
-         * @param bool|null $include_stack Whether to include stack trace (null = use global setting)
-         * @return void
-         */
-        public static function warning( string $message, array $context = [], ?bool $include_stack = null ): void {
+        self::writeLog(
+            message: $message,
+            level: self::LEVEL_INFO,
+            context: $context,
+            includeStack: $includeStack
+        );
+    }
 
-            // only log if enabled
-            if ( ! self::$_enabled ) {
-                return;
-            }
-
-            self::writeLog( $message, self::LEVEL_WARNING, $context, $include_stack );
+    /**
+     * Log a debug message
+     *
+     * Only logs when logging is enabled
+     *
+     * @param string $message Debug message
+     * @param array<string, mixed> $context Additional context data
+     * @param bool|null $includeStack Whether to include stack trace (null = use global setting)
+     */
+    public static function debug(
+        string $message,
+        array $context = [],
+        bool|null $includeStack = null
+    ): void {
+        if (!self::$enabled) {
+            return;
         }
 
-        /**
-         * Log an info message
-         * 
-         * @since 8.4
-         * @author Kevin Pirnie <me@kpirnie.com>
-         * 
-         * @param string $message Info message
-         * @param array $context Additional context data
-         * @param bool|null $include_stack Whether to include stack trace (null = use global setting)
-         * @return void
-         */
-        public static function info( string $message, array $context = [], ?bool $include_stack = null ): void {
+        self::writeLog(
+            message: $message,
+            level: self::LEVEL_DEBUG,
+            context: $context,
+            includeStack: $includeStack
+        );
+    }
 
-            // only log if enabled
-            if ( ! self::$_enabled ) {
-                return;
-            }
-
-            self::writeLog( $message, self::LEVEL_INFO, $context, $include_stack );
-        }
-
-        /**
-         * Log a debug message
-         * 
-         * @since 8.4
-         * @author Kevin Pirnie <me@kpirnie.com>
-         * 
-         * @param string $message Debug message
-         * @param array $context Additional context data
-         * @param bool|null $include_stack Whether to include stack trace (null = use global setting)
-         * @return void
-         */
-        public static function debug( string $message, array $context = [], ?bool $include_stack = null ): void {
-
-            // only log if enabled
-            if ( ! self::$_enabled ) {
-                return;
-            }
-
-            self::writeLog( $message, self::LEVEL_DEBUG, $context, $include_stack );
-        }
-
-        /**
-         * Set the log file path
-         * 
-         * @since 8.4
-         * @author Kevin Pirnie <me@kpirnie.com>
-         * 
-         * @param string|null $file_path Log file path (null to use system log)
-         * @return bool Returns true if file is writable or null, false otherwise
-         */
-        public static function setLogFile( ?string $file_path ): bool {
-
-            // if null, use system log
-            if ( $file_path === null ) {
-                self::$_log_file = null;
-                return true;
-            }
-
-            // get the directory path
-            $dir = dirname( $file_path );
-            
-            // create directory if it doesn't exist
-            if ( ! is_dir( $dir ) ) {
-                if ( ! @mkdir( $dir, 0755, true ) ) {
-                    return false;
-                }
-            }
-            
-            // check if directory is writable
-            if ( ! is_writable( $dir ) ) {
-                return false;
-            }
-            
-            // set the log file path
-            self::$_log_file = $file_path;
-            
-            // return success
+    /**
+     * Set the log file path
+     *
+     * @param string|null $filePath Log file path (null to use system log)
+     * @return bool Returns true if file is writable or null, false otherwise
+     */
+    public static function setLogFile(string|null $filePath): bool
+    {
+        if ($filePath === null) {
+            self::$logFile = null;
             return true;
         }
 
-        /**
-         * Write log data to configured destination
-         * 
-         * @since 8.4
-         * @author Kevin Pirnie <me@kpirnie.com>
-         * 
-         * @param string $message Log message
-         * @param int $level Log level
-         * @param array $context Additional context data
-         * @param bool|null $include_stack Whether to include stack trace (null = use global setting)
-         * @return void
-         */
-        private static function writeLog( string $message, int $level, array $context = [], ?bool $include_stack = null ): void {
+        $dir = dirname($filePath);
 
-            // format the log entry
-            $formatted_message = self::formatLogEntry( $message, $level, $context, $include_stack );
-            
-            // write to appropriate destination
-            if ( self::$_log_file === null ) {
-                // use PHP's built-in error_log to write to system log
-                error_log( $formatted_message );
-            } else {
-                // write to specified file
-                @file_put_contents( self::$_log_file, $formatted_message . PHP_EOL, FILE_APPEND | LOCK_EX );
-            }
+        // Create directory if it doesn't exist
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
+            return false;
         }
 
-        /**
-         * Format log entry for output
-         * 
-         * @since 8.4
-         * @author Kevin Pirnie <me@kpirnie.com>
-         * 
-         * @param string $message Log message
-         * @param int $level Log level
-         * @param array $context Additional context data
-         * @param bool|null $include_stack Whether to include stack trace (null = use global setting)
-         * @return string Returns formatted log entry
-         */
-        private static function formatLogEntry( string $message, int $level, array $context = [], ?bool $include_stack = null ): string {
-
-            // format timestamp
-            $timestamp = date( 'Y-m-d H:i:s' );
-            
-            // get level name
-            $level_name = self::$_level_names[$level];
-            
-            // build base log message
-            $formatted = "[{$timestamp}] {$level_name}: {$message}";
-            
-            // add context if present
-            if ( ! empty( $context ) ) {
-                $formatted .= ' | Context: ' . json_encode( $context, JSON_UNESCAPED_SLASHES );
-            }
-            
-            // determine whether to include stack trace
-            $should_include_stack = $include_stack !== null ? $include_stack : self::$_include_stack_trace;
-            
-            // add stack trace if enabled
-            if ( $should_include_stack ) {
-                $trace = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS );
-                // remove the first few entries that are this class
-                $trace = array_slice( $trace, 3 ); // increased from 2 to 3 to account for extra method call
-                $formatted .= ' | Stack: ' . json_encode( $trace, JSON_UNESCAPED_SLASHES );
-            }
-            
-            // return the formatted entry
-            return $formatted;
+        // Check if directory is writable
+        if (!is_writable($dir)) {
+            return false;
         }
 
+        self::$logFile = $filePath;
+        return true;
     }
-    
-}
 
-// create our fake alias if it doesn't already exist
-if( ! class_exists( 'LOG' ) ) {
+    /**
+     * Write log data to configured destination
+     *
+     * @param string $message Log message
+     * @param int $level Log level
+     * @param array<string, mixed> $context Additional context data
+     * @param bool|null $includeStack Whether to include stack trace (null = use global setting)
+     */
+    private static function writeLog(
+        string $message,
+        int $level,
+        array $context = [],
+        bool|null $includeStack = null
+    ): void {
+        $formattedMessage = self::formatLogEntry(
+            message: $message,
+            level: $level,
+            context: $context,
+            includeStack: $includeStack
+        );
 
-    // redeclare this
-    class LOG extends Logger {}
+        match (self::$logFile) {
+            null => error_log($formattedMessage),
+            default => @file_put_contents(
+                self::$logFile,
+                $formattedMessage . PHP_EOL,
+                FILE_APPEND | LOCK_EX
+            )
+        };
+    }
 
+    /**
+     * Format log entry for output
+     *
+     * @param string $message Log message
+     * @param int $level Log level
+     * @param array<string, mixed> $context Additional context data
+     * @param bool|null $includeStack Whether to include stack trace (null = use global setting)
+     * @return string Returns formatted log entry
+     */
+    private static function formatLogEntry(
+        string $message,
+        int $level,
+        array $context = [],
+        bool|null $includeStack = null
+    ): string {
+        $timestamp = date('Y-m-d H:i:s');
+        $levelName = self::getLevelName($level);
+        $formatted = "[{$timestamp}] {$levelName}: {$message}";
+
+        // Add context if present
+        if (!empty($context)) {
+            try {
+                $contextJson = json_encode($context, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+                $formatted .= " | Context: {$contextJson}";
+            } catch (JsonException) {
+                $formatted .= ' | Context: [JSON encoding failed]';
+            }
+        }
+
+        // Determine whether to include stack trace
+        $shouldIncludeStack = $includeStack ?? self::$includeStackTrace;
+
+        // Add stack trace if enabled
+        if ($shouldIncludeStack) {
+            $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+            $filteredTrace = array_slice($trace, 3);
+
+            try {
+                $traceJson = json_encode($filteredTrace, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+                $formatted .= " | Stack: {$traceJson}";
+            } catch (JsonException) {
+                $formatted .= ' | Stack: [JSON encoding failed]';
+            }
+        }
+
+        return $formatted;
+    }
+
+    /**
+     * Enable or disable logging
+     */
+    public static function setEnabled(bool $enabled): void
+    {
+        self::$enabled = $enabled;
+    }
+
+    /**
+     * Check if logging is enabled
+     */
+    public static function isEnabled(): bool
+    {
+        return self::$enabled;
+    }
+
+    /**
+     * Set stack trace inclusion globally
+     */
+    public static function setIncludeStackTrace(bool $include): void
+    {
+        self::$includeStackTrace = $include;
+    }
+
+    /**
+     * Get current log file path
+     */
+    public static function getLogFile(): string|null
+    {
+        return self::$logFile;
+    }
 }
