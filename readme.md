@@ -14,20 +14,15 @@ A simple, universal application logger for PHP that provides basic logging capab
 
 ## Requirements
 
-- PHP 7.4 or higher
+- PHP 8.0 or higher
 - Write permissions for log file directory (if using file logging)
 
 ## Installation
 
-1. Include the logger file in your project:
-```php
-require_once 'path/to/logger/logger.php';
-```
+Install via Composer:
 
-2. Ensure the `KPT_PATH` constant is defined before including:
-```php
-define('KPT_PATH', true);
-require_once 'path/to/logger/logger.php';
+```bash
+composer require kevinpirnie/kpt-logger
 ```
 
 ## Basic Usage
