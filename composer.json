@@ -41,7 +41,7 @@
         }
     },
     "scripts": {
-        "test": "phpunit",
+        "test": "phpunit tests",
         "test-coverage": "phpunit --coverage-html coverage",
         "phpstan": "phpstan analyse src",
         "cs-check": "phpcs src --standard=PSR12",
