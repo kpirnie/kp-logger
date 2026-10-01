@@ -48,7 +48,7 @@ class Logger
     private static string|null $logFile = null;
 
     /** @var bool Whether to include stack trace */
-    private static bool $includeStackTrace = true;
+    private static bool $includeStackTrace = false;
 
     /**
      * Initialize the logger class
@@ -57,7 +57,7 @@ class Logger
      */
     public function __construct(
         private readonly bool $instanceEnabled,
-        private readonly bool $instanceShowStack = true
+        private readonly bool $instanceShowStack = false
     ) {
         self::$enabled = $this->instanceEnabled;
         self::$includeStackTrace = $this->instanceShowStack;
