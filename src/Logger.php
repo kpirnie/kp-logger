@@ -254,6 +254,9 @@ class Logger
     ): string {
         $timestamp = date('Y-m-d H:i:s');
         $levelName = self::getLevelName($level);
+
+        // Neutralize line breaks to prevent log line forging
+        $message = addcslashes($message, "\r\n");
         $formatted = "[{$timestamp}] {$levelName}: {$message}";
 
         // Add context if present
