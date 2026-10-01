@@ -230,7 +230,7 @@ class Logger
         // Track whether this write creates the log file
         $isNewFile = self::$logFile !== null && !file_exists(self::$logFile);
 
-        match (self::$logFile) {
+        $written = match (self::$logFile) {
             null => error_log($formattedMessage),
             default => @file_put_contents(
                 self::$logFile,
@@ -238,6 +238,11 @@ class Logger
                 FILE_APPEND | LOCK_EX
             )
         };
+
+        // Fall back to the system log if the file write failed
+        if (self::$logFile !== null && $written === false) {
+            error_log($formattedMessage);
+        }
 
         // Restrict permissions on a newly created log file
         if ($isNewFile && file_exists(self::$logFile)) {
