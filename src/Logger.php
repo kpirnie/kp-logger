@@ -277,7 +277,8 @@ class Logger
             try {
                 $contextJson = json_encode(
                     $context,
-                    JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_THROW_ON_ERROR
+                    JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE |
+                        JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_THROW_ON_ERROR
                 );
                 $formatted .= " | Context: {$contextJson}";
             } catch (JsonException) {
@@ -296,7 +297,8 @@ class Logger
             try {
                 $traceJson = json_encode(
                     $filteredTrace,
-                    JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_THROW_ON_ERROR
+                    JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE |
+                        JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_THROW_ON_ERROR
                 );
                 $formatted .= " | Stack: {$traceJson}";
             } catch (JsonException) {
