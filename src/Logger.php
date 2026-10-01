@@ -193,7 +193,7 @@ class Logger
         $dir = dirname($filePath);
 
         // Create directory if it doesn't exist
-        if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
+        if (!is_dir($dir) && !@mkdir($dir, 0750, true)) {
             return false;
         }
 
@@ -227,6 +227,9 @@ class Logger
             includeStack: $includeStack
         );
 
+        // Track whether this write creates the log file
+        $isNewFile = self::$logFile !== null && !file_exists(self::$logFile);
+
         match (self::$logFile) {
             null => error_log($formattedMessage),
             default => @file_put_contents(
@@ -235,6 +238,11 @@ class Logger
                 FILE_APPEND | LOCK_EX
             )
         };
+
+        // Restrict permissions on a newly created log file
+        if ($isNewFile && file_exists(self::$logFile)) {
+            @chmod(self::$logFile, 0640);
+        }
     }
 
     /**
