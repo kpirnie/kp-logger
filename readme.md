@@ -22,7 +22,7 @@ A simple, universal application logger for PHP that provides basic logging capab
 
 ## Requirements
 
-- PHP 8.0 or higher
+- PHP 8.4 or higher
 - Write permissions for log file directory (if using file logging)
 
 ## Installation
